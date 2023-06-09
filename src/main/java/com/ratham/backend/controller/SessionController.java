@@ -3,6 +3,9 @@ package com.ratham.backend.controller;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -10,9 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,41 +38,43 @@ public class SessionController {
 
     private static final Logger LOG = LoggerFactory.getLogger(SessionController.class);
 
-    @GetMapping("/sessions")
+    @GetMapping("/availableSessions")
     public ResponseEntity<List<Session>> getAllFreeSessions() {
         // Query the data source to fetch the list of available sessions with the dean
-
+        LocalDateTime currentDateTime = LocalDateTime.now();
         List<Session> sessions = sessionRepository.findFreeSessionsWithDean();
-        
-        LOG.info("Sessions: ", sessions);
+        List<Session> availableSessions = sessions.stream()
+                .filter(session -> currentDateTime.isAfter(session.getStartTime()) && session.isAvailable())
+                .collect(Collectors.toList());      
+        LOG.info("Sessions: ", availableSessions);
         return ResponseEntity.ok().body(sessions);
     }
 
-    @GetMapping("/bookSession/{deanId}")
-    public ResponseEntity<List<Session>> getFreeSessionsWithDean(@PathVariable("deanId") String deanId,  HttpServletRequest request) {
-        // Query the data source to fetch the list of available sessions with the dean
-        final String authorizationHeader = request.getHeader("Authorization");
-
-        String username = null;
-        String jwt = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = tokenService.extractUsername(jwt);
-        }
-
-        List<Session> sessions = sessionRepository.findFreeSessionsWithDean(deanId);
+    @PostMapping("/bookSession/{deanId}")
+    public ResponseEntity<List<Session>> getFreeSessionsWithDean(@PathVariable("deanId") String deanId, @AuthenticationPrincipal UserDetails userDetails) {
+        String username = userDetails.getUsername();
+        LOG.info("UserName: {}", username);
         LocalDateTime currentDateTime = LocalDateTime.now();
-        for(Session session: sessions) {
-            if(session.getStartTime().isAfter(currentDateTime) && session.isAvailable()) {
-                session.setAvailable(false); 
+        List<Session> sessions = sessionRepository.findFreeSessionsWithDean(deanId);
+
+        boolean sessionBooked = sessions.stream()
+            .filter(session -> session.getStartTime().isAfter(currentDateTime) && session.isAvailable())
+            .findFirst()
+            .map(session -> {
+                session.setAvailable(false);
                 session.setBookedBy(username);
                 sessionRepository.save(session);
-                break;
-            }
+                return true; // session booked successfully
+            })
+            .orElse(false); // no available sessions or booking failed
+        
+        if (sessionBooked) {
+            LOG.info("Session booked successfully");
+            return ResponseEntity.ok().body(sessions);
+        } else {
+            LOG.warn("No available sessions or booking failed");
+            return ResponseEntity.noContent().build();
         }
-        LOG.info("Sessions: ", sessions);
-        return ResponseEntity.ok().body(sessions);
     }
 
     @GetMapping("/pendingSessions")
