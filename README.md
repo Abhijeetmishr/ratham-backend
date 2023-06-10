@@ -13,3 +13,7 @@ A simple Spring boot app to demonstrate slot/meeting booking based on availabili
 3. localhost:8080/api/bookSession/A500063236
 
 ![image](https://github.com/Abhijeetmishr/ratham-backend/assets/43075376/76e04b14-a733-4c2d-88d1-b2aa3eb85358)
+
+4. localhost:8080/api/pendingSessions/D500063236
+
+![image](https://github.com/Abhijeetmishr/ratham-backend/assets/43075376/88cea0d3-aff9-4741-bfa9-66c33446a400)
