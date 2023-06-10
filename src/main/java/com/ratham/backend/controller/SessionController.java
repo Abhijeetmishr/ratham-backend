@@ -77,13 +77,11 @@ public class SessionController {
         }
     }
 
-    @GetMapping("/pendingSessions")
-    public ResponseEntity<List<Session>> bookSession() {
-        // Query the data source to fetch the list of available sessions with the dean
-
-        List<Session> sessions = sessionRepository.findFreeSessionsWithDean();
-        
-        LOG.info("Sessions: ", sessions);
-        return ResponseEntity.ok().body(sessions);
+    @GetMapping("/pendingSessions/{deanId}")
+    public ResponseEntity<List<Session>> bookSession(@PathVariable("deanId") String deanId) {
+        LOG.info("dean Id: {}", deanId);
+        List<Session> pendingSessions = sessionRepository.findPendingSessionsWithDean(deanId, LocalDateTime.now());     
+        LOG.info("List of all pending sessions: {}", pendingSessions);
+        return ResponseEntity.ok().body(pendingSessions);
     }
 }
