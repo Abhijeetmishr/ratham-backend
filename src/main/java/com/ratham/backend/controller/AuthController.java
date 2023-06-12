@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ratham.backend.entity.LoginRequest;
+import com.ratham.backend.entity.LoginResponse;
 import com.ratham.backend.model.User;
 import com.ratham.backend.repository.UserRepository;
 import com.ratham.backend.service.TokenService;
@@ -42,13 +43,13 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
 
     @PostMapping("/token")
-    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest){
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUniversityId(), loginRequest.getPassword())
             );
         } catch(Exception e) {
-            return ResponseEntity.ok().body("{\"invalid username/password\"}");
+            return ResponseEntity.ok(new LoginResponse("Invalid username/password", null));
         }
 
         final UserDetails userDetails = userService
@@ -58,7 +59,7 @@ public class AuthController {
         
         LOG.info("Token granted {}", token);
 
-        return ResponseEntity.ok().body("{\"token\": \"" + token + "\"}");
+        return ResponseEntity.ok(new LoginResponse("Login successful", token));
     }
 
 
